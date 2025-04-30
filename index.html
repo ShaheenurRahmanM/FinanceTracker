@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(120deg, #f8f9fa, #e9ecef);
+            color: #333;
+        }
+
+        header {
+            background-color: #007bff;
+            color: #fff;
+            text-align: center;
+            padding: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            display: flex;
+            gap: 2rem;
+        }
+
+        .form-container {
+            flex: 1;
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-container {
+            flex: 2;
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        form input, form select, form button {
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        form button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        form button:hover {
+            background-color: #0056b3;
+        }
+
+        .expense-list {
+            margin-top: 1rem;
+        }
+
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .expense-item button {
+            background-color: #ffc107;
+            border: none;
+            border-radius: 4px;
+            padding: 0.2rem 0.5rem;
+            cursor: pointer;
+        }
+
+        .expense-item button:hover {
+            background-color: #e0a800;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h2 {
+            margin: 0 0 1rem;
+            font-size: 1.25rem;
+            color: #007bff;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 1s ease;
+        }
+
+    </style>
+</head>
+<body>
+    <header>
+        Personal Finance Dashboard
+    </header>
+
+    <div class="container">
+        <div class="form-container">
+            <form id="incomeForm">
+                <h2>Set Your Income</h2>
+                <input type="number" id="income" placeholder="Enter your total income in ₹" required>
+                <button type="submit">Set Income</button>
+            </form>
+
+            <form id="expenseForm" style="display:none;">
+                <h2>Add Expense</h2>
+                <input type="text" id="category" placeholder="Enter category (e.g., Rent, Food)" required><br>
+                <input type="number" id="amount" placeholder="Enter amount in ₹" required>
+                <button type="submit">Add Expense</button>
+            </form>
+
+            <div class="expense-list" id="expenseList"></div>
+
+            <button id="saveButton" style="display:none; background-color: #28a745; color: white; padding: 0.5rem; border: none; border-radius: 4px; cursor: pointer;">Save Details</button>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="expenseChart"></canvas>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="grid">
+            <div class="card fade-in">
+                <h2>Income</h2>
+                <p id="incomeDisplay">Total: ₹0</p>
+            </div>
+
+            <div class="card fade-in" style="animation-delay: 0.2s;">
+                <h2>Expenses</h2>
+                <p id="totalExpenses">Total: ₹0</p>
+            </div>
+
+            <div class="card fade-in" style="animation-delay: 0.4s;">
+                <h2>Savings</h2>
+                <p id="savings">Total: ₹0</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const incomeForm = document.getElementById('incomeForm');
+        const expenseForm = document.getElementById('expenseForm');
+        const expenseChart = document.getElementById('expenseChart').getContext('2d');
+        const incomeDisplay = document.getElementById('incomeDisplay');
+        const totalExpensesElem = document.getElementById('totalExpenses');
+        const savingsElem = document.getElementById('savings');
+        const expenseList = document.getElementById('expenseList');
+        const saveButton = document.getElementById('saveButton');
+
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        let totalIncome = 0;
+        let totalExpenses = 0;
+
+        const chart = new Chart(expenseChart, {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Expenses',
+                    data: [],
+                    backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8'],
+                    borderWidth: 1,
+                }],
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                },
+            },
+        });
+
+        incomeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            totalIncome = parseFloat(document.getElementById('income').value);
+
+            if (totalIncome) {
+                incomeDisplay.textContent = `Total: ₹${totalIncome}`;
+                savingsElem.textContent = `Total: ₹${totalIncome}`;
+                expenseForm.style.display = 'block';
+                incomeForm.style.display = 'none';
+            }
+        });
+
+        expenseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const category = document.getElementById('category').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+
+            if (category && amount) {
+                expenses.push({ category, amount });
+                updateChart();
+                updateSummary();
+                displayExpenses();
+                expenseForm.reset();
+                saveButton.style.display = 'block';
+            }
+        });
+
+        // saveButton.addEventListener('click', () => {
+        //     const name = prompt('Enter a name to save your details:');
+        //     if (name) {
+        //         localStorage.setItem('expenses', JSON.stringify(expenses));
+        //         alert(`Details saved as "${name}".`);
+        //         resetApp();
+        //     }
+        // });
+
+        saveButton.addEventListener('click', () => {
+    const name = prompt('Enter a name to save your details:');
+    if (name) {
+        // Prepare the content for the text file
+        let content = `Name: ${name}\n\n`;
+        content += `Total Income: ₹${totalIncome}\n`;
+        content += `Total Expenses: ₹${totalExpenses}\n`;
+        content += `Savings: ₹${totalIncome - totalExpenses}\n\n`;
+        content += 'Expenses:\n';
+
+        expenses.forEach((expense, index) => {
+            content += `${index + 1}. ${expense.category}: ₹${expense.amount}\n`;
+        });
+
+        // Create a blob and trigger download
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${name}_finance_details.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        alert(`Details saved as "${name}_finance_details.txt".`);
+    }
+});
+
+        function updateChart() {
+            const labels = expenses.map(exp => exp.category);
+            const data = expenses.map(exp => exp.amount);
+
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = data;
+            chart.update();
+        }
+
+        // function updateSummary() {
+        //     totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0);
+        //     totalExpensesElem.textContent = `Total: ₹${totalExpenses}`;
+        //     savingsElem.textContent = `Total: ₹${totalIncome - totalExpenses}`;
+        // }
+
+        function updateSummary() {
+    totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0);
+    const savings = totalIncome - totalExpenses;
+
+    if (savings >= 0) {
+        savingsElem.textContent = `Total: ₹${savings}`;
+        document.querySelector('.debt')?.remove(); // Remove debt card if it exists
+    } else {
+        savingsElem.textContent = `Total: ₹0`;
+        displayDebt(Math.abs(savings));
+    }
+
+    totalExpensesElem.textContent = `Total: ₹${totalExpenses}`;
+}
+
+function displayDebt(debtAmount) {
+    let debtCard = document.querySelector('.debt');
+    if (!debtCard) {
+        const debtCardContainer = document.createElement('div');
+        debtCardContainer.className = 'card fade-in debt';
+        debtCardContainer.style.animationDelay = '0.6s';
+        debtCardContainer.innerHTML = `
+            <h2>Debt</h2>
+            <p id="debt">Total: ₹${debtAmount}</p>
+        `;
+        document.querySelector('.grid').appendChild(debtCardContainer);
+    } else {
+        document.getElementById('debt').textContent = `Total: ₹${debtAmount}`;
+    }
+}
+
+        function displayExpenses() {
+            expenseList.innerHTML = '';
+            expenses.forEach((expense, index) => {
+                const expenseItem = document.createElement('div');
+                expenseItem.className = 'expense-item';
+                expenseItem.innerHTML = `
+                    <span>${expense.category}: ₹${expense.amount}</span>
+                    <button onclick="editExpense(${index})">Edit</button>
+                    <button onclick="deleteExpense(${index})">Delete</button>
+                `;
+                expenseList.appendChild(expenseItem);
+            });
+        }
+
+        function editExpense(index) {
+            const expense = expenses[index];
+            const newCategory = prompt('Edit category:', expense.category);
+            const newAmount = prompt('Edit amount:', expense.amount);
+
+            if (newCategory && newAmount) {
+                expenses[index] = { category: newCategory, amount: parseFloat(newAmount) };
+                updateChart();
+                updateSummary();
+                displayExpenses();
+                localStorage.setItem('expenses', JSON.stringify(expenses));
+            }
+        }
+
+        function deleteExpense(index) {
+            expenses.splice(index, 1);
+            updateChart();
+            updateSummary();
+            displayExpenses();
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+        }
+
+        function resetApp() {
+            totalIncome = 0;
+            totalExpenses = 0;
+            incomeDisplay.textContent = `Total: ₹${totalIncome}`;
+            totalExpensesElem.textContent = `Total: ₹${totalExpenses}`;
+            savingsElem.textContent = `Total: ₹${totalIncome - totalExpenses}`;
+            expenseForm.style.display = 'none';
+            incomeForm.style.display = 'block';
+            expenseList.innerHTML = '';
+            saveButton.style.display = 'none';
+            expenses = [];
+            localStorage.removeItem('expenses');
+        }
+
+        // Load saved expenses on page load
+        window.addEventListener('load', () => {
+            if (expenses.length) {
+                updateChart();
+                updateSummary();
+                displayExpenses();
+            }
+        });
+
+    </script>
+</body>
+</html>
